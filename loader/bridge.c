@@ -242,7 +242,7 @@ unsigned char *decodeString(unsigned char *bArr, int *bArr_length) {
 }
 
 jni_bytearray *loadFile(char *str) {
-  char *lang[] = {"ja", "en",    "fr",    "de", "it",
+  char *lang[] = {"ja", "en",    "fr",    "it", "de",
                   "es", "zh_CN", "zh_TW", "ko", "th"};
 
   char *substring = strrchr(str, 46);
@@ -361,9 +361,6 @@ jni_intarray *loadTexture(jni_bytearray *bArr) {
   unsigned char *temp = stbi_load_from_memory(bArr->elements, bArr->size, &x,
                                               &y, &channels_in_file, 4);
 
-  /*char tempname[100];
-  sprintf(tempname, "ux0:data/ff5/%p.png", bArr);
-  stbi_write_png(tempname,x,y,4,temp,4*x);*/
   texture->size = x * y + 2;
   texture->elements = malloc(texture->size * sizeof(int));
   texture->elements[0] = x;
@@ -567,9 +564,9 @@ int getCurrentLanguage() {
   case SCE_SYSTEM_PARAM_LANG_FRENCH:
     return 2;
   case SCE_SYSTEM_PARAM_LANG_GERMAN:
-    return 3;
-  case SCE_SYSTEM_PARAM_LANG_ITALIAN:
     return 4;
+  case SCE_SYSTEM_PARAM_LANG_ITALIAN:
+    return 3;
   case SCE_SYSTEM_PARAM_LANG_SPANISH:
     return 5;
   case SCE_SYSTEM_PARAM_LANG_CHINESE_S:

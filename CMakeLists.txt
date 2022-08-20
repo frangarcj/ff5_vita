@@ -69,6 +69,7 @@ target_link_libraries(companion
   imgui
   vitaGL
   vitashark
+  SceShaccCgExt
   mathneon
   SceAppMgr_stub
   SceAudio_stub

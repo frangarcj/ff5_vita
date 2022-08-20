@@ -35,6 +35,7 @@ target_link_libraries(FF5.elf
   SceShaccCgExt
   mathneon
   kubridge_stub
+  taihen_stub
   SceAppMgr_stub
   SceAppUtil_stub
   SceAudio_stub
@@ -71,6 +72,7 @@ target_link_libraries(companion
   vitashark
   SceShaccCgExt
   mathneon
+  taihen_stub
   SceAppMgr_stub
   SceAudio_stub
   SceCtrl_stub

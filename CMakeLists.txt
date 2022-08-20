@@ -32,6 +32,7 @@ target_link_libraries(FF5.elf
   stdc++
   vitaGL
   vitashark
+  SceShaccCgExt
   mathneon
   kubridge_stub
   SceAppMgr_stub

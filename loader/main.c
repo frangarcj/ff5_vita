@@ -649,14 +649,6 @@ int pthread_once_fake(volatile int *once_control, void (*init_routine)(void)) {
 
 int gettid(void) { return sceKernelGetThreadId(); }
 
-char *getcwd(char *buf, size_t size) {
-  if (buf) {
-    buf[0] = '\0';
-    return buf;
-  }
-  return NULL;
-}
-
 int this_width;
 int this_height;
 

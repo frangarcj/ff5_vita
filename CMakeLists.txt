@@ -28,12 +28,21 @@ add_executable(FF5.elf
 )
 
 target_link_libraries(FF5.elf
-  m
-  stdc++
   vitaGL
   vitashark
   SceShaccCgExt
   mathneon
+  OpenSLES
+  sndfile
+  vorbis
+  vorbisenc
+  ogg
+  FLAC
+  icuuc
+  icudata
+  z
+  m
+  stdc++
   kubridge_stub
   taihen_stub
   SceAppMgr_stub
@@ -49,12 +58,7 @@ target_link_libraries(FF5.elf
   ScePower_stub
   SceTouch_stub
   SceVshBridge_stub
-  OpenSLES
-  sndfile
   SceHid_stub
-  icudata
-  icuuc
-  z
   -Wl,--whole-archive
   pthread
   -Wl,--no-whole-archive

@@ -9,7 +9,11 @@
 #include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/kernel/sysmem.h>
-#include <psp2kern/kernel/sysmem/memtype.h>
+
+#ifndef SCE_KERNEL_MEMBLOCK_TYPE_USER_RX
+#define SCE_KERNEL_MEMBLOCK_TYPE_USER_RX                 (0x0C20D050)
+#endif
+
 #include <kubridge.h>
 
 #include <stdio.h>

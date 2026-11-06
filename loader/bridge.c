@@ -1,4 +1,5 @@
 #include "bridge.h"
+#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <psp2/appmgr.h>
@@ -595,9 +596,27 @@ void openFile(char *str) {
 
 int getFileSize() {
   FILE *fp = fopen(current_file, "r");
-  fseek(fp, 0L, SEEK_END);
-  int length = ftell(fp);
-  return length;
+  if (fp == NULL)
+    return -1;
+
+  long length;
+  if (fseek(fp, 0L, SEEK_END) != 0 || (length = ftell(fp)) < 0) {
+    int saved_errno = errno;
+    fclose(fp);
+    errno = saved_errno;
+    return -1;
+  }
+
+  if (length > INT_MAX) {
+    fclose(fp);
+    errno = EOVERFLOW;
+    return -1;
+  }
+
+  if (fclose(fp) != 0)
+    return -1;
+
+  return (int)length;
 }
 
 void closeFile() {

@@ -772,7 +772,13 @@ void loadShader(int is_vertex, char *file) {
   free(code);
 }
 
-int main_thread(SceSize args, void *argp) {
+static void *main_thread(void *argp) {
+  (void)argp;
+
+  // Preserve the kernel priority used by the original native thread.
+  int ret = sceKernelChangeThreadPriority(0, 0x40);
+  if (ret < 0)
+    fatal_error("Error setting main thread priority: 0x%08x.", (unsigned)ret);
 
   int has_low_res;
 
@@ -907,7 +913,7 @@ int main_thread(SceSize args, void *argp) {
     vglSwapBuffers(isEditTextExec());
   }
 
-  return 0;
+  return NULL;
 }
 
 void patch_game(void) {
@@ -1322,9 +1328,21 @@ int main(int argc, char *argv[]) {
 
   so_initialize(&ff5_mod);
 
-  SceUID thid =
-      sceKernelCreateThread("main_thread", (SceKernelThreadEntry)main_thread,
-                            0x40, 1024 * 1024, 0, 0, NULL);
-  sceKernelStartThread(thid, 0, NULL);
+  // OpenSLES condition waits require the thread state set up by pthread_create.
+  pthread_t thread;
+  pthread_attr_t attr;
+  int ret = pthread_attr_init(&attr);
+  if (ret != 0)
+    fatal_error("Error initializing main thread attributes: %d.", ret);
+
+  ret = pthread_attr_setstacksize(&attr, 1024 * 1024);
+  if (ret == 0)
+    ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+  if (ret == 0)
+    ret = pthread_create(&thread, &attr, main_thread, NULL);
+  pthread_attr_destroy(&attr);
+  if (ret != 0)
+    fatal_error("Error creating main thread: %d.", ret);
+
   return sceKernelExitDeleteThread(0);
 }

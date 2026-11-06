@@ -12,11 +12,36 @@ project(FF5.elf C CXX)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 set(VITA_APP_NAME "Final Fantasy V")
 set(VITA_TITLEID  "FF5000000")
-set(VITA_VERSION  "01.00")
+set(VITA_VERSION  "01.01")
 set(VITA_MKSFOEX_FLAGS "-d ATTRIBUTE2=12")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wl,-q,--wrap,memcpy,--wrap,memmove,--wrap,memset -Wall -O3 -mfloat-abi=softfp")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
+
+# Resolve the target libraries, including libsndfile's optional static codecs.
+set(PKG_CONFIG_EXECUTABLE "${VITASDK}/bin/arm-vita-eabi-pkg-config")
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FF5_SNDFILE REQUIRED sndfile)
+pkg_check_modules(FF5_ICU REQUIRED icu-uc)
+
+# ICU loads versioned runtime data from app0:/. Package the data belonging to
+# the linked SDK library; the bundled data remains available for ICU 59 SDKs.
+string(REGEX MATCH "^[0-9]+" FF5_ICU_MAJOR_VERSION "${FF5_ICU_VERSION}")
+set(FF5_ICU_DATA_NAME "icudt${FF5_ICU_MAJOR_VERSION}l")
+set(FF5_ICU_DATA_DIR "${VITASDK}/arm-vita-eabi/share/icu/${FF5_ICU_VERSION}/${FF5_ICU_DATA_NAME}")
+if(NOT IS_DIRECTORY "${FF5_ICU_DATA_DIR}" AND
+   IS_DIRECTORY "${CMAKE_SOURCE_DIR}/${FF5_ICU_DATA_NAME}")
+  set(FF5_ICU_DATA_DIR "${CMAKE_SOURCE_DIR}/${FF5_ICU_DATA_NAME}")
+endif()
+set(FF5_ICU_DATA_FILES)
+foreach(ICU_DATA_FILE cnvalias.icu confusables.cfu unames.icu
+                      ibm-943_P15A-2003.cnv ibm-5348_P100-1997.cnv)
+  if(NOT EXISTS "${FF5_ICU_DATA_DIR}/${ICU_DATA_FILE}")
+    message(FATAL_ERROR "Missing ICU ${FF5_ICU_VERSION} runtime data: ${FF5_ICU_DATA_DIR}/${ICU_DATA_FILE}")
+  endif()
+  list(APPEND FF5_ICU_DATA_FILES
+       "${FF5_ICU_DATA_DIR}/${ICU_DATA_FILE}" "${FF5_ICU_DATA_NAME}/${ICU_DATA_FILE}")
+endforeach()
 
 add_executable(FF5.elf
   loader/main.c
@@ -33,13 +58,8 @@ target_link_libraries(FF5.elf
   SceShaccCgExt
   mathneon
   OpenSLES
-  sndfile
-  vorbis
-  vorbisenc
-  ogg
-  FLAC
-  icuuc
-  icudata
+  ${FF5_SNDFILE_STATIC_LDFLAGS}
+  ${FF5_ICU_STATIC_LDFLAGS}
   z
   m
   stdc++
@@ -104,11 +124,7 @@ vita_create_vpk(FF5.vpk ${VITA_TITLEID} eboot.bin
        ${CMAKE_SOURCE_DIR}/NotoSansSC-Regular.ttf NotoSansSC-Regular.ttf
        ${CMAKE_SOURCE_DIR}/NotoSansKR-Regular.ttf NotoSansKR-Regular.ttf
        ${CMAKE_BINARY_DIR}/companion.bin companion.bin
-       ${CMAKE_SOURCE_DIR}/icudt59l/cnvalias.icu icudt59l/cnvalias.icu
-       ${CMAKE_SOURCE_DIR}/icudt59l/confusables.cfu icudt59l/confusables.cfu
-       ${CMAKE_SOURCE_DIR}/icudt59l/unames.icu icudt59l/unames.icu
-       ${CMAKE_SOURCE_DIR}/icudt59l/ibm-943_P15A-2003.cnv icudt59l/ibm-943_P15A-2003.cnv
-       ${CMAKE_SOURCE_DIR}/icudt59l/ibm-5348_P100-1997.cnv icudt59l/ibm-5348_P100-1997.cnv
+       ${FF5_ICU_DATA_FILES}
        ${CMAKE_SOURCE_DIR}/shaders/1_Negative_f.cg shaders/1_Negative_f.cg
        ${CMAKE_SOURCE_DIR}/shaders/1_Negative_v.cg shaders/1_Negative_v.cg
        ${CMAKE_SOURCE_DIR}/shaders/2_FXAA_f.cg shaders/2_FXAA_f.cg

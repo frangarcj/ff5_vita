@@ -23,6 +23,10 @@ set(PKG_CONFIG_EXECUTABLE "${VITASDK}/bin/arm-vita-eabi-pkg-config")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FF5_SNDFILE REQUIRED sndfile)
 pkg_check_modules(FF5_ICU REQUIRED icu-uc)
+# Link pthread only once, in the whole-archive block below. Its constructor must
+# be retained, but an earlier pkg-config copy would duplicate the definitions.
+list(REMOVE_ITEM FF5_SNDFILE_STATIC_LDFLAGS -lpthread -pthread)
+list(REMOVE_ITEM FF5_ICU_STATIC_LDFLAGS -lpthread -pthread)
 
 # ICU loads versioned runtime data from app0:/. Package the data belonging to
 # the linked SDK library; the bundled data remains available for ICU 59 SDKs.

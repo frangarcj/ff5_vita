@@ -7,37 +7,83 @@ on:
     types: [run_build]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: vitasdk/vitasdk-softfp:latest
+    container: vitasdk/vitasdk-softfp:nightly-20261029@sha256:99814094e0240b7ebe8700ba3742ee761bbcfb22bf8eedeac8db5c1dbe3e3d32
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install dependencies
       run: |
         git clone https://github.com/Rinnegatamante/vitaGL.git
+        git -C vitaGL checkout 2bdbe895ddc6a7e410a9ea55a8f53d8173c61ad8
         make -C vitaGL SOFTFP_ABI=1 NO_DEBUG=1 NO_TEX_COMBINER=1 MATH_SPEEDHACK=1 -j$(nproc) install
-    - name: Get Information Variables
-      id: core
-      run: |
-        echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+
     - name: Compile project
       run: |
-        mkdir build
-        cd build
-        cmake ..
-        make -j$(nproc)
+        cmake -S . -B build
+        cmake --build build --parallel "$(nproc)"
+
+    - name: Package release and matching debug symbols
+      run: |
+        mkdir -p build/release
+        cp build/FF5.vpk build/release/
+        tar -czf build/release/FF5-debug-symbols.tar.gz -C build FF5.elf eboot.bin
+        {
+          printf 'Source commit: %s\n' "$GITHUB_SHA"
+          printf 'VitaGL commit: %s\n' '2bdbe895ddc6a7e410a9ea55a8f53d8173c61ad8'
+          printf 'VitaSDK image: %s\n' 'vitasdk/vitasdk-softfp:nightly-20261029@sha256:99814094e0240b7ebe8700ba3742ee761bbcfb22bf8eedeac8db5c1dbe3e3d32'
+          arm-vita-eabi-gcc --version
+        } > build/release/BUILD-INFO.txt
+        python3 - <<'PY'
+        from pathlib import Path
+        changelog = Path("CHANGELOG.md").read_text()
+        notes = changelog.split("\n## ", 2)[1].split("\n", 1)[1].strip()
+        Path("build/release/RELEASE-NOTES.md").write_text(notes + "\n")
+        PY
+        cd build/release
+        sha256sum FF5.vpk FF5-debug-symbols.tar.gz > SHA256SUMS
+
     - name: Upload artifacts
-      if: ${{ success() }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: FF5-${{ steps.core.outputs.sha8 }}.vpk
-        path: build/FF5.vpk
+        name: FF5-${{ github.sha }}
+        path: build/release/
+        if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: FF5-${{ github.sha }}
+        path: release
+
+    - name: Read release notes
+      id: notes
+      run: |
+        {
+          echo 'body<<RELEASE_NOTES_EOF'
+          cat release/RELEASE-NOTES.md
+          echo 'RELEASE_NOTES_EOF'
+        } >> "$GITHUB_OUTPUT"
+
     - uses: svenstaro/upload-release-action@v2
-      if: contains(github.ref,'refs/tags')
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: build/FF5.vpk
-        overwrite: true
+        file: release/*
+        file_glob: true
+        overwrite: false
         tag: ${{ github.ref }}
+        target_commit: ${{ github.sha }}
+        body: ${{ steps.notes.outputs.body }}
